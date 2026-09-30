@@ -46,7 +46,9 @@
   function splitChars(el) {
     const text = el.textContent;
     el.setAttribute('aria-label', text);
-    el.innerHTML = [...text].map(c => c === ' ' ? ' ' : `<span class="ch" aria-hidden="true" style="display:inline-block">${c}</span>`).join('');
+    // chars are grouped per word so a line never breaks inside a word
+    el.innerHTML = text.trim().split(/\s+/).map(w =>
+      `<span class="wd" aria-hidden="true" style="display:inline-block;white-space:nowrap">${[...w].map(c => `<span class="ch" style="display:inline-block">${c}</span>`).join('')}</span>`).join(' ');
     return $$('.ch', el);
   }
 
@@ -101,11 +103,12 @@
   $$('[data-topo]').forEach(topo);
 
   /* ------------------------------------------------------------------
-     Partners marquee content
+     Partners marquee — AIDENTIS and FDI are featured above, the rest scroll
   ------------------------------------------------------------------ */
-  const partners = Array.from({ length: 20 }, (_, i) => `assets/pt${i + 1}.jpg`);
+  const partners = Array.from({ length: 20 }, (_, i) => `assets/pt${i + 1}.jpg`).filter(p => !p.endsWith('pt16.jpg'));
   $$('[data-marquee]').forEach((m, mi) => {
-    const list = mi ? partners.slice(10).concat(partners.slice(0, 10)).reverse() : partners;
+    const half = Math.ceil(partners.length / 2);
+    const list = mi ? partners.slice(half).concat(partners.slice(0, half)).reverse() : partners;
     const items = list.map(src => `<div class="marquee__item"><img src="${src}" alt="" loading="lazy"></div>`).join('');
     $('.marquee__inner', m).innerHTML = items + items;
   });
@@ -128,41 +131,116 @@
   }
   if (lenis) lenis.on('scroll', e => onScroll(e.scroll));
   else addEventListener('scroll', () => onScroll(scrollY), { passive: true });
+  onScroll(scrollY);
 
   /* menu */
-  const burger = $('[data-burger]');
-  burger.addEventListener('click', () => {
+  const closeMenu = () => { if (document.body.classList.contains('menu-open')) { document.body.classList.remove('menu-open'); lenis?.start(); } };
+  $('[data-burger]').addEventListener('click', () => {
     const open = document.body.classList.toggle('menu-open');
     header.classList.remove('is-hidden');
     open ? lenis?.stop() : lenis?.start();
     if (open) gsap.fromTo('.menu__nav a', { yPercent: 100, opacity: 0 }, { yPercent: 0, opacity: 1, duration: 1, ease: EASE, stagger: .05, delay: .25 });
   });
 
-  /* anchors */
-  $$('a[href^="#"]').forEach(a => a.addEventListener('click', e => {
-    const id = a.getAttribute('href');
-    if (id.length < 2 && id !== '#') return;
-    const t = id === '#' ? null : $(id);
+  /* anchors — "#x" and "index.html#x" scroll in place when the target is on this page */
+  $$('a[href*="#"]').forEach(a => a.addEventListener('click', e => {
+    const [path, hash] = a.getAttribute('href').split('#');
+    const here = !path || location.pathname.endsWith('/' + path) || (path === 'index.html' && /\/$/.test(location.pathname));
+    if (!here) return;
+    const t = hash ? document.getElementById(hash) : null;
+    if (!hash) { e.preventDefault(); return; }
     if (!t) return;
-    e.preventDefault();
-    if (document.body.classList.contains('menu-open')) { document.body.classList.remove('menu-open'); lenis?.start(); }
+    e.preventDefault(); closeMenu();
     scrollTo(t);
   }));
-  $('[data-top]').addEventListener('click', () => scrollTo(0));
+  $('[data-top]')?.addEventListener('click', () => scrollTo(0));
 
   /* ------------------------------------------------------------------
-     Lightbox
+     Application popup — every CTA ([data-apply]) opens it
+     Without a backend the application is sent to the KSA WhatsApp;
+     set window.KSA_FORM_ENDPOINT to POST it as JSON instead.
   ------------------------------------------------------------------ */
-  const lb = $('[data-lb]');
-  const closeLb = () => { gsap.to(lb, { opacity: 0, duration: .4, onComplete: () => { lb.hidden = true; lenis?.start(); } }); };
-  $$('[data-lightbox]').forEach(b => b.addEventListener('click', () => {
-    $('img', lb).src = b.dataset.lightbox;
-    lb.hidden = false; lenis?.stop();
-    gsap.fromTo(lb, { opacity: 0 }, { opacity: 1, duration: .4 });
-    gsap.fromTo($('img', lb), { scale: .9, y: 30 }, { scale: 1, y: 0, duration: .9, ease: EASE });
-  }));
-  lb.addEventListener('click', closeLb);
-  addEventListener('keydown', e => e.key === 'Escape' && !lb.hidden && closeLb());
+  const WA_PHONE = '77017732456';
+  const modal = $('[data-modal="apply"]');
+  const form = $('[data-apply-form]', modal), done = $('[data-form-done]', modal);
+  const F = form.elements;   // named fields (form.name would be the form's own attribute)
+  const evLine = $('[data-form-event]', modal), err = $('[data-form-err]', modal);
+  let lastFocus = null;
+
+  function openApply(source = 'Сайт', eventName = '') {
+    lastFocus = document.activeElement;
+    closeMenu();
+    form.hidden = false; done.hidden = true; err.hidden = true;
+    F.source.value = source;
+    form.dataset.event = eventName;
+    evLine.hidden = !eventName;
+    evLine.textContent = eventName ? `Запись на мероприятие: ${eventName}` : '';
+    $('.form__title', form).textContent = eventName ? 'Записаться' : 'Вступить в КСА';
+    $('.form__cap', form).textContent = eventName ? 'Заявка на участие' : 'Заявка на членство · 10 000 ₸ / год';
+    modal.hidden = false; lenis?.stop();
+    document.body.classList.add('modal-open');
+    if (!reduce) {
+      gsap.fromTo($('.modal__backdrop', modal), { opacity: 0 }, { opacity: 1, duration: .5 });
+      gsap.fromTo($('.modal__panel', modal), { yPercent: 12, opacity: 0 }, { yPercent: 0, opacity: 1, duration: .9, ease: EASE });
+      gsap.fromTo($$('.form > *', modal), { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: EASE, stagger: .04, delay: .1 });
+    }
+    setTimeout(() => F.name.focus(), 60);
+  }
+  function closeApply() {
+    const fin = () => { modal.hidden = true; document.body.classList.remove('modal-open'); lenis?.start(); lastFocus?.focus?.(); };
+    if (reduce) return fin();
+    gsap.to($('.modal__panel', modal), { yPercent: 8, opacity: 0, duration: .4, ease: 'power2.in' });
+    gsap.to($('.modal__backdrop', modal), { opacity: 0, duration: .45, onComplete: fin });
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-apply]');
+    if (b) { e.preventDefault(); openApply(b.dataset.apply, b.dataset.event || ''); }
+  });
+  $$('[data-close]', modal).forEach(b => b.addEventListener('click', closeApply));
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden) closeApply(); });
+
+  // phone mask +7 (XXX) XXX-XX-XX
+  F.phone.addEventListener('input', () => {
+    let d = F.phone.value.replace(/\D/g, '');
+    if (d.startsWith('8')) d = '7' + d.slice(1);
+    if (!d.startsWith('7')) d = '7' + d;
+    d = d.slice(0, 11);
+    const p = [d.slice(1, 4), d.slice(4, 7), d.slice(7, 9), d.slice(9, 11)];
+    F.phone.value = '+7' + (p[0] ? ` (${p[0]}` : '') + (p[0].length === 3 ? ')' : '') + (p[1] ? ` ${p[1]}` : '') + (p[2] ? `-${p[2]}` : '') + (p[3] ? `-${p[3]}` : '');
+  });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const phoneOk = F.phone.value.replace(/\D/g, '').length === 11;
+    const bad = [F.name.value.trim() ? null : F.name, phoneOk ? null : F.phone, F.city.value ? null : F.city, F.agree.checked ? null : F.agree].filter(Boolean);
+    $$('.is-bad', form).forEach(f => f.classList.remove('is-bad'));
+    if (bad.length) {
+      bad.forEach(f => f.closest('.field, .check').classList.add('is-bad'));
+      err.hidden = false;
+      if (!reduce) gsap.fromTo($('.modal__panel', modal), { x: -8 }, { x: 0, duration: .5, ease: 'elastic.out(1, .35)' });
+      return;
+    }
+    const d = Object.fromEntries(new FormData(form));
+    d.event = form.dataset.event || '';
+    const msg = [
+      d.event ? `Запись на мероприятие: ${d.event}` : 'Заявка на вступление в КСА',
+      `Имя: ${d.name}`, `Телефон: ${d.phone}`, `Город: ${d.city}`,
+      d.spec && `Специализация: ${d.spec}`, d.clinic && `Клиника: ${d.clinic}`, `Источник: ${d.source}`
+    ].filter(Boolean).join('\n');
+    const wa = `https://wa.me/${WA_PHONE}?text=${encodeURIComponent(msg)}`;
+    $('[data-wa]', done).href = wa;
+    let sent = false;
+    if (window.KSA_FORM_ENDPOINT) {
+      try { sent = (await fetch(window.KSA_FORM_ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) })).ok; } catch (_) { sent = false; }
+    }
+    if (!sent) window.open(wa, '_blank', 'noopener');
+    form.hidden = true; done.hidden = false;
+    if (!reduce) {
+      gsap.fromTo($('.done__ico', done), { scale: 0, rotate: -90 }, { scale: 1, rotate: 0, duration: 1, ease: 'back.out(1.8)' });
+      gsap.fromTo($$('.form__done > :not(.done__ico)', modal), { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: EASE, stagger: .06, delay: .15 });
+    }
+    form.reset();
+  });
 
   /* ------------------------------------------------------------------
      FAQ — animated details
@@ -181,31 +259,6 @@
       }
     });
   });
-
-  /* ------------------------------------------------------------------
-     Presidents drag slider
-  ------------------------------------------------------------------ */
-  (() => {
-    const wrap = $('[data-drag]'), track = $('.pres__track', wrap), bar = $('[data-pres-progress]');
-    let x = 0, max = 0, start = 0, sx = 0, down = false, moved = 0;
-    const setX = gsap.quickTo(track, 'x', { duration: .9, ease: 'power3.out' });
-    const measure = () => { max = Math.max(0, track.scrollWidth - wrap.clientWidth + parseFloat(getComputedStyle(wrap).paddingLeft) * 2); };
-    const apply = v => {
-      x = gsap.utils.clamp(-max, 0, v); setX(x);
-      const p = max ? -x / max : 0;
-      gsap.to(bar, { left: `${p * 80}%`, duration: .9, ease: 'power3.out' });
-    };
-    measure(); addEventListener('resize', () => { measure(); apply(x); });
-    wrap.addEventListener('pointerdown', e => { down = true; moved = 0; sx = e.clientX; start = x; wrap.classList.add('is-drag'); });
-    addEventListener('pointermove', e => { if (!down) return; moved = e.clientX - sx; apply(start + moved * 1.2); });
-    addEventListener('pointerup', () => { down = false; wrap.classList.remove('is-drag'); });
-    const step = () => $('.pres__card', track).offsetWidth + 20;
-    $('[data-next]').addEventListener('click', () => apply(x - step()));
-    $('[data-prev]').addEventListener('click', () => apply(x + step()));
-    // horizontal wheel / trackpad
-    wrap.addEventListener('wheel', e => { if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) { e.preventDefault(); apply(x - e.deltaX); } }, { passive: false });
-  })();
-
 
   /* ------------------------------------------------------------------
      Goals — «frontiers» tabs (after anveril.com):
@@ -249,6 +302,7 @@
     }
     function sample(i, out) {
       const img = imgs[i];
+      if (!cols || !rows) return;                                   // canvas not laid out yet
       if (!img.complete || !img.naturalWidth) { img.onload = () => i === idx && morphTo(i); return; }
       sampler.width = cols; sampler.height = rows;
       const s = Math.max(cols / img.naturalWidth, rows / img.naturalHeight);   // object-fit: cover
@@ -339,6 +393,7 @@
     }));
 
     size(); addEventListener('resize', size);
+    new ResizeObserver(() => { if (canvas.clientWidth && canvas.clientWidth !== W) size(); }).observe(canvas);
     go(0);
     sample(0, to); cur.set(to); from.set(to);
     requestAnimationFrame(loop);
@@ -367,51 +422,59 @@
   }
 
   /* ------------------------------------------------------------------
-     Everything below is motion — skipped for reduced motion
+     Motion — skipped for reduced motion
   ------------------------------------------------------------------ */
+  const fmt = (n, el) => el.dataset.format === 'space' ? n.toLocaleString('ru-RU').replace(/ |,/g, ' ') : String(n);
+
   function reveal() {
+    const hasIntro = !!$('.preloader');
     if (reduce) {
-      $$('[data-count]').forEach(n => n.textContent = n.dataset.count);
+      $$('[data-count]').forEach(n => n.textContent = fmt(+n.dataset.count, n));
       $$('.preloader').forEach(p => p.remove());
       document.body.classList.remove('is-loading');
       initFrontiers();
+      document.dispatchEvent(new CustomEvent('ksa:ready'));
       return;
     }
 
-    /* ---------- split & prepare ---------- */
-    const heroTitleLines = splitLines($('.hero__title'));
-    const heroSub = splitLines($('.hero__sub span'));
-    gsap.set('.hero__mark', { overflow: 'hidden', paddingTop: '.08em' });
-    gsap.set('.hm-g', { yPercent: 110 });
-    gsap.set([heroTitleLines, heroSub], { yPercent: 110 });
-    gsap.set('.hero [data-fade]', { opacity: 0, y: 20 });
-    gsap.set('.hero .gridlines i', { scaleY: 0 });
-    gsap.set('.hero__media img', { scale: 1.35 });
+    if (hasIntro) {
+      /* ---------- split & prepare hero ---------- */
+      const heroTitleLines = splitLines($('.hero__title'));
+      const heroSub = splitLines($('.hero__sub span'));
+      gsap.set('.hero__mark', { overflow: 'hidden', paddingTop: '.08em' });
+      gsap.set('.hm-g', { yPercent: 110 });
+      gsap.set([heroTitleLines, heroSub], { yPercent: 110 });
+      gsap.set('.hero [data-fade]', { opacity: 0, y: 20 });
+      gsap.set('.hero .gridlines i', { scaleY: 0 });
+      gsap.set('.hero__media img', { scale: 1.35 });
 
-    /* ---------- preloader ---------- */
-    const count = $('.preloader__count b');
-    const cnt = { v: 0 };
-    const tl = gsap.timeline({ defaults: { ease: EASE } });
-    tl.from('.pl-g', { yPercent: 120, opacity: 0, duration: 1.2, stagger: .08 })
-      .to(cnt, { v: 100, duration: 1.6, ease: 'power2.inOut', onUpdate: () => count.textContent = Math.round(cnt.v) }, 0)
-      .to('.pl-g', { yPercent: -120, opacity: 0, duration: .8, stagger: .05, ease: 'expo.in' }, 1.7)
-      .to('.preloader', { clipPath: 'inset(0 0 100% 0)', duration: 1.2, ease: 'expo.inOut' }, 2.2)
-      .add(() => { document.body.classList.remove('is-loading'); lenis?.start(); $('.preloader').remove(); }, 3.4)
-      // hero intro
-      .to('.hero__media img', { scale: 1.08, duration: 2.6, ease: 'expo.out' }, 2.3)
-      .to('.hero .gridlines i', { scaleY: 1, duration: 1.6, stagger: .1, ease: 'expo.inOut' }, 2.4)
-      .to('.hm-g', { yPercent: 0, duration: 1.6, stagger: .07 }, 2.7)
-      .to(heroSub, { yPercent: 0, duration: 1.2 }, 3.0)
-      .to(heroTitleLines, { yPercent: 0, duration: 1.4, stagger: .09 }, 3.05)
-      .to('.hero [data-fade]', { opacity: 1, y: 0, duration: 1.2, stagger: .08 }, 3.3);
+      /* ---------- preloader ---------- */
+      const count = $('.preloader__count b');
+      const cnt = { v: 0 };
+      gsap.timeline({ defaults: { ease: EASE } })
+        .from('.pl-g', { yPercent: 120, opacity: 0, duration: 1.2, stagger: .08 })
+        .to(cnt, { v: 100, duration: 1.6, ease: 'power2.inOut', onUpdate: () => count.textContent = Math.round(cnt.v) }, 0)
+        .to('.pl-g', { yPercent: -120, opacity: 0, duration: .8, stagger: .05, ease: 'expo.in' }, 1.7)
+        .to('.preloader', { clipPath: 'inset(0 0 100% 0)', duration: 1.2, ease: 'expo.inOut' }, 2.2)
+        .add(() => {
+          document.body.classList.remove('is-loading'); lenis?.start(); $('.preloader').remove();
+          const t = location.hash && document.getElementById(location.hash.slice(1));   // arrived from the events page
+          if (t) scrollTo(t);
+        }, 3.4)
+        .to('.hero__media img', { scale: 1.08, duration: 2.6, ease: 'expo.out' }, 2.3)
+        .to('.hero .gridlines i', { scaleY: 1, duration: 1.6, stagger: .1, ease: 'expo.inOut' }, 2.4)
+        .to('.hm-g', { yPercent: 0, duration: 1.6, stagger: .07 }, 2.7)
+        .to(heroSub, { yPercent: 0, duration: 1.2 }, 3.0)
+        .to(heroTitleLines, { yPercent: 0, duration: 1.4, stagger: .07 }, 3.05)
+        .to('.hero [data-fade]', { opacity: 1, y: 0, duration: 1.2, stagger: .08 }, 3.3);
 
-    // slow breathing zoom on hero image (video-like)
-    gsap.to('.hero__media', { scale: 1.06, duration: 14, ease: 'sine.inOut', yoyo: true, repeat: -1 });
-
-    // hero out on scroll
-    gsap.to('.hero__media img', { yPercent: 18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
-    gsap.to('.hero__mark', { yPercent: -35, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
-    gsap.to(['.hero__bottom', '.hero__sub'], { y: -80, opacity: 0, ease: 'none', scrollTrigger: { trigger: '.hero', start: '10% top', end: '70% top', scrub: true } });
+      gsap.to('.hero__media', { scale: 1.06, duration: 14, ease: 'sine.inOut', yoyo: true, repeat: -1 });
+      gsap.to('.hero__media img', { yPercent: 18, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+      gsap.to('.hero__mark', { yPercent: -35, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: true } });
+      gsap.to(['.hero__bottom', '.hero__sub'], { y: -80, opacity: 0, ease: 'none', scrollTrigger: { trigger: '.hero', start: '10% top', end: '70% top', scrub: true } });
+    } else {
+      document.body.classList.remove('is-loading'); lenis?.start();
+    }
 
     /* ---------- generic line reveals ---------- */
     $$('[data-reveal-lines]').forEach(el => {
@@ -426,22 +489,25 @@
       gsap.from(el, { y: 40, opacity: 0, duration: 1.3, ease: EASE, scrollTrigger: { trigger: el, start: 'top 92%' } });
     });
 
-    /* ---------- big headings: char fill on scroll (reference "Benefits"/"Contact") ---------- */
+    /* ---------- big headings: char fill on scroll ---------- */
     $$('[data-fill]').forEach(el => {
       const light = el.hasAttribute('data-fill-light');
       const chars = splitChars(el);
       gsap.set(chars, { color: light ? 'rgba(253,254,255,.18)' : 'rgba(16,17,21,.14)' });
-      gsap.from(chars, { yPercent: 40, opacity: 0, duration: 1.2, ease: EASE, stagger: .03, scrollTrigger: { trigger: el, start: 'top 92%' } });
+      gsap.from(chars, { yPercent: 40, opacity: 0, duration: 1.2, ease: EASE, stagger: .02, scrollTrigger: { trigger: el, start: 'top 92%' } });
       gsap.to(chars, {
         color: light ? '#fdfeff' : '#101115', stagger: .1, ease: 'none',
         scrollTrigger: { trigger: el, start: 'top 85%', end: 'top 35%', scrub: true }
       });
     });
 
-    /* ---------- quote: word fill ---------- */
-    $$('[data-fill-words]').forEach(el => {
-      const words = splitWords(el);
-      gsap.to(words, { color: '#101115', stagger: .1, ease: 'none', scrollTrigger: { trigger: el, start: 'top 80%', end: 'bottom 45%', scrub: true } });
+    /* ---------- above-the-fold headings: timed char fill (same look, no scroll needed) ---------- */
+    $$('[data-fill-auto]').forEach(el => {
+      const chars = splitChars(el);
+      gsap.set(chars, { color: 'rgba(16,17,21,.14)' });
+      gsap.timeline({ delay: .2 })
+        .from(chars, { yPercent: 40, opacity: 0, duration: 1.1, ease: EASE, stagger: .025 })
+        .to(chars, { color: '#101115', duration: .5, ease: 'none', stagger: .035 }, .35);
     });
 
     /* ---------- parallax images ---------- */
@@ -451,82 +517,49 @@
     });
 
     /* ---------- image clip reveals ---------- */
-    ['.about__portrait', '.band__img', '.cert img'].forEach(sel => $$(sel).forEach((el, i) => {
-      gsap.fromTo(el, { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: 1.6, ease: 'expo.inOut', delay: sel === '.cert img' ? (i % 4) * .08 : 0, scrollTrigger: { trigger: el, start: 'top 88%' } });
-    }));
+    $$('.about__portrait, .perk__img').forEach(el => {
+      gsap.fromTo(el, { clipPath: 'inset(100% 0 0 0)' }, { clipPath: 'inset(0% 0 0 0)', duration: 1.6, ease: 'expo.inOut', scrollTrigger: { trigger: el, start: 'top 88%' } });
+    });
 
     /* ---------- counters ---------- */
     $$('[data-count]').forEach(n => {
       const to = +n.dataset.count, o = { v: 0 };
-      gsap.to(o, { v: to, duration: 2.4, ease: 'expo.out', scrollTrigger: { trigger: n, start: 'top 90%' }, onUpdate: () => n.textContent = Math.round(o.v) });
+      gsap.to(o, { v: to, duration: 2.4, ease: 'expo.out', scrollTrigger: { trigger: n, start: 'top 90%' }, onUpdate: () => n.textContent = fmt(Math.round(o.v), n) });
     });
-    gsap.from('.stats .stat', { y: 60, opacity: 0, duration: 1.4, ease: EASE, stagger: .1, scrollTrigger: { trigger: '.stats', start: 'top 85%' } });
+    if ($('.stats')) gsap.from('.stats .stat', { y: 60, opacity: 0, duration: 1.4, ease: EASE, stagger: .1, scrollTrigger: { trigger: '.stats', start: 'top 85%' } });
 
-    /* ---------- EVENTS: pinned full-screen slider ---------- */
-    (() => {
-      const sec = $('.events'), slides = $$('.ev', sec), n = slides.length;
-      const marker = $('.ruler__marker', sec), mlabel = $('span', marker);
-      const pieces = s => [$('.ev__title', s), $('.ev__spec', s), $('.ev__top', s), $('.ev__desc', s)];
-      slides.forEach((s, i) => { if (i) gsap.set(pieces(s), { y: 60, opacity: 0 }); });
-
-      const tl = gsap.timeline({
-        defaults: { ease: 'none' },
-        scrollTrigger: {
-          trigger: sec, start: 'top top', end: () => `+=${innerHeight * (n - .3)}`, pin: '.events__pin', scrub: 1,
-          onUpdate: self => {
-            gsap.set(marker, { left: `${self.progress * 100}%` });
-            mlabel.textContent = String(Math.min(n, Math.floor(self.progress * (n - .001)) + 1)).padStart(2, '0');
-          }
-        }
+    /* ---------- membership perks (bento) ---------- */
+    if ($('.bento')) {
+      gsap.from('[data-perk]', { y: 90, opacity: 0, duration: 1.5, ease: EASE, stagger: .08, scrollTrigger: { trigger: '.bento', start: 'top 85%' } });
+      gsap.from('.perk .perk__ico', { scale: 0, rotate: -90, duration: 1.4, ease: 'back.out(1.6)', stagger: .08, scrollTrigger: { trigger: '.bento', start: 'top 80%' } });
+      gsap.fromTo('.perk__meter i', { scaleX: 0 }, { scaleX: 1, duration: 2.4, ease: 'expo.out', scrollTrigger: { trigger: '.perk--hours', start: 'top 80%' } });
+      // tilt on hover
+      if (!isTouch) $$('[data-perk]').forEach(c => {
+        const rx = gsap.quickTo(c, 'rotationX', { duration: .8, ease: 'power3.out' }), ry = gsap.quickTo(c, 'rotationY', { duration: .8, ease: 'power3.out' });
+        gsap.set(c, { transformPerspective: 900 });
+        c.addEventListener('pointermove', e => { const r = c.getBoundingClientRect(); ry(((e.clientX - r.left) / r.width - .5) * 6); rx(-((e.clientY - r.top) / r.height - .5) * 6); });
+        c.addEventListener('pointerleave', () => { rx(0); ry(0); });
       });
-      slides.forEach((s, i) => {
-        if (!i) return;
-        const prev = slides[i - 1], at = i - 1 + .15;
-        tl.to(pieces(prev), { y: -60, opacity: 0, duration: .35, stagger: .03 }, at)
-          .to($('.ev__media img', prev), { scale: 1.3, yPercent: -8, duration: .8 }, at)
-          .to(s, { clipPath: 'inset(0% 0 0 0)', duration: .8, ease: 'power2.inOut' }, at)
-          .fromTo($('.ev__media img', s), { scale: 1.4, yPercent: 10 }, { scale: 1.15, yPercent: 0, duration: .8 }, at)
-          .to(pieces(s), { y: 0, opacity: 1, duration: .4, stagger: .05 }, at + .45);
-      });
-      tl.to({}, { duration: .3 });
+    }
 
-      // first slide entrance
-      gsap.from(pieces(slides[0]), { y: 60, opacity: 0, duration: 1.4, ease: EASE, stagger: .08, scrollTrigger: { trigger: sec, start: 'top 60%' } });
-      gsap.from($('.ev__media img', slides[0]), { scale: 1.5, ease: 'none', scrollTrigger: { trigger: sec, start: 'top bottom', end: 'top top', scrub: true } });
-      gsap.from($$('.gridlines i', sec), { scaleY: 0, duration: 1.6, stagger: .1, ease: 'expo.inOut', scrollTrigger: { trigger: sec, start: 'top 60%' } });
-      gsap.from('.events__tab', { xPercent: 100, duration: 1.2, ease: EASE, scrollTrigger: { trigger: sec, start: 'top 40%' } });
-    })();
+    /* ---------- price ---------- */
+    if ($('.price')) {
+      gsap.from('.price .gridlines i', { scaleY: 0, duration: 1.6, stagger: .1, ease: 'expo.inOut', scrollTrigger: { trigger: '.price', start: 'top 70%' } });
+      gsap.from('.price__num', { yPercent: 30, opacity: 0, duration: 1.6, ease: EASE, scrollTrigger: { trigger: '.price__num', start: 'top 90%' } });
+      gsap.from('[data-price-item]', { x: 60, opacity: 0, duration: 1.3, ease: EASE, stagger: .12, scrollTrigger: { trigger: '.price__list', start: 'top 85%' } });
+    }
 
-    /* ---------- goals «frontiers» — created after the pins above so its trigger positions include their spacing ---------- */
+    /* ---------- «Как вступить» frontiers (after pins above, if any) ---------- */
     initFrontiers();
 
     /* ---------- cards ---------- */
-    gsap.from('[data-card]', { y: 80, opacity: 0, duration: 1.4, ease: EASE, stagger: .1, scrollTrigger: { trigger: '.cards', start: 'top 85%' } });
-    gsap.from('.card__ico', { scale: 0, rotate: -90, duration: 1.4, ease: 'back.out(1.6)', stagger: .1, scrollTrigger: { trigger: '.cards', start: 'top 85%' } });
+    if ($('.cards')) {
+      gsap.from('[data-card]', { y: 80, opacity: 0, duration: 1.4, ease: EASE, stagger: .1, scrollTrigger: { trigger: '.cards', start: 'top 85%' } });
+      gsap.from('.card__ico', { scale: 0, rotate: -90, duration: 1.4, ease: 'back.out(1.6)', stagger: .1, scrollTrigger: { trigger: '.cards', start: 'top 85%' } });
+    }
 
-    /* ---------- presidents entrance ---------- */
-    gsap.from('.pres__card', { x: 120, opacity: 0, duration: 1.6, ease: EASE, stagger: .07, scrollTrigger: { trigger: '.pres', start: 'top 85%' } });
-
-    /* ---------- gallery: horizontal pin ---------- */
-    (() => {
-      const sec = $('.gallery'), track = $('.gallery__track', sec);
-      const dist = () => Math.max(0, track.scrollWidth - innerWidth);
-      const tween = gsap.to(track, {
-        x: () => -dist(), ease: 'none',
-        scrollTrigger: { trigger: sec, start: 'top top', end: () => `+=${dist()}`, pin: '.gallery__pin', scrub: 1, invalidateOnRefresh: true }
-      });
-      $$('.g img', track).forEach(img => {
-        gsap.fromTo(img, { xPercent: -8 }, { xPercent: 8, ease: 'none', scrollTrigger: { trigger: img.parentElement, containerAnimation: tween, start: 'left right', end: 'right left', scrub: true } });
-      });
-      $$('.g', track).forEach(g => {
-        gsap.from(g, { clipPath: 'inset(0 0 0 100%)', duration: 1.4, ease: 'expo.inOut', scrollTrigger: { trigger: g, containerAnimation: tween, start: 'left 95%' } });
-      });
-      const title = $('.gallery__head .big', sec);
-      const ch = splitChars(title);
-      gsap.from(ch, { yPercent: 100, opacity: 0, duration: 1.2, ease: EASE, stagger: .03, scrollTrigger: { trigger: sec, start: 'top 60%' } });
-    })();
-
-    /* ---------- marquee with scroll velocity ---------- */
+    /* ---------- partners ---------- */
+    if ($('.partners__lead')) gsap.from('.plead', { y: 50, opacity: 0, duration: 1.3, ease: EASE, stagger: .1, scrollTrigger: { trigger: '.partners__lead', start: 'top 88%' } });
     $$('[data-marquee]').forEach(m => {
       const inner = $('.marquee__inner', m), dir = +m.dataset.marquee;
       let x = 0, boost = 0;
@@ -541,25 +574,32 @@
       });
     });
 
-    /* ---------- contact / footer ---------- */
-    gsap.from('.contact__list > div', { y: 30, opacity: 0, duration: 1.2, ease: EASE, stagger: .08, scrollTrigger: { trigger: '.contact__list', start: 'top 90%' } });
-    gsap.from('.contact .gridlines i', { scaleY: 0, duration: 1.6, stagger: .1, ease: 'expo.inOut', scrollTrigger: { trigger: '.contact', start: 'top 60%' } });
+    /* ---------- final CTA / footer ---------- */
+    if ($('.contact')) {
+      gsap.from('.contact__list > div', { y: 30, opacity: 0, duration: 1.2, ease: EASE, stagger: .08, scrollTrigger: { trigger: '.contact__list', start: 'top 90%' } });
+      gsap.from('.contact .gridlines i', { scaleY: 0, duration: 1.6, stagger: .1, ease: 'expo.inOut', scrollTrigger: { trigger: '.contact', start: 'top 60%' } });
+    }
     gsap.from('.footer__word span', { yPercent: 100, ease: 'none', stagger: .06, scrollTrigger: { trigger: '.footer__word', start: 'top bottom', end: 'bottom bottom', scrub: true } });
-
-    /* ---------- emblem rotation ---------- */
     gsap.to('.emblem svg', { rotate: 720, ease: 'none', scrollTrigger: { trigger: document.body, start: 'top top', end: 'bottom bottom', scrub: .5 } });
 
     /* ---------- magnetic pills / arrows ---------- */
-    if (!isTouch) $$('.pill, .arrow, .burger').forEach(b => {
-      const qx = gsap.quickTo(b, 'x', { duration: .6, ease: 'power3.out' }), qy = gsap.quickTo(b, 'y', { duration: .6, ease: 'power3.out' });
-      b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); qx((e.clientX - r.left - r.width / 2) * .25); qy((e.clientY - r.top - r.height / 2) * .35); });
-      b.addEventListener('pointerleave', () => { qx(0); qy(0); });
-    });
+    if (!isTouch) $$('.pill, .arrow, .burger').forEach(magnet);
 
-    // refresh in page order, so every trigger below a pin accounts for its spacer
+    document.dispatchEvent(new CustomEvent('ksa:ready'));
     ScrollTrigger.sort();
     ScrollTrigger.refresh();
   }
+
+  function magnet(b) {
+    if (b.dataset.magnet) return;
+    b.dataset.magnet = 1;
+    const qx = gsap.quickTo(b, 'x', { duration: .6, ease: 'power3.out' }), qy = gsap.quickTo(b, 'y', { duration: .6, ease: 'power3.out' });
+    b.addEventListener('pointermove', e => { const r = b.getBoundingClientRect(); qx((e.clientX - r.left - r.width / 2) * .25); qy((e.clientY - r.top - r.height / 2) * .35); });
+    b.addEventListener('pointerleave', () => { qx(0); qy(0); });
+  }
+
+  // shared API for page scripts (events.js)
+  window.KSA = { $, $$, gsap, lenis, reduce, isTouch, EASE, scrollTo, splitChars, splitLines, openApply, magnet };
 
   (document.fonts?.ready || Promise.resolve()).then(() => requestAnimationFrame(reveal));
 })();

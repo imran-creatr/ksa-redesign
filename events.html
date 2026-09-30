@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Наши мероприятия — KSA</title>
+<meta name="description" content="Ближайшие мероприятия Казахстанской стоматологической ассоциации: семинары, мастер-классы и курсы с зачётными единицами.">
+<link rel="icon" href="assets/logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=6">
+</head>
+<body class="is-loading page-events">
+
+<!-- ============ HEADER ============ -->
+<header class="header is-light" data-header>
+  <a href="index.html#top" class="header__logo" aria-label="KSA — на главную">
+    <img src="assets/logo.png" alt="">
+    <span>KSA<small>since 1991</small></span>
+  </a>
+  <nav class="header__nav" aria-label="Основное меню">
+    <a href="index.html#benefits" class="link-u">Преимущества</a>
+    <a href="index.html#price" class="link-u">Стоимость</a>
+    <a href="index.html#steps" class="link-u">Как вступить</a>
+    <a href="index.html#about" class="link-u">Об ассоциации</a>
+    <a href="index.html#faq" class="link-u">FAQ</a>
+    <a href="events.html" class="link-u header__events is-current" aria-current="page">Наши мероприятия</a>
+  </nav>
+  <div class="header__right">
+    <div class="langs" role="group" aria-label="Язык">
+      <button type="button">ҚАЗ</button><button type="button">EN</button><button type="button" class="is-active">РУС</button>
+    </div>
+    <button type="button" class="pill pill--lime header__cta" data-apply="Шапка · Мероприятия"><i class="pill__dot"></i><span>Вступить в КСА</span></button>
+    <button class="burger" type="button" aria-label="Открыть меню" data-burger><span></span><span></span></button>
+  </div>
+</header>
+
+<div class="menu" data-menu>
+  <div class="menu__grid">
+    <nav class="menu__nav">
+      <a href="index.html#benefits"><em>01</em>Преимущества</a>
+      <a href="index.html#price"><em>02</em>Стоимость</a>
+      <a href="index.html#steps"><em>03</em>Как вступить</a>
+      <a href="index.html#about"><em>04</em>Об ассоциации</a>
+      <a href="index.html#faq"><em>05</em>FAQ</a>
+      <a href="events.html"><em>06</em>Наши мероприятия</a>
+    </nav>
+    <div class="menu__foot">
+      <button type="button" class="pill pill--lime" data-apply="Мобильное меню · Мероприятия"><i class="pill__dot"></i><span>Вступить в КСА</span></button>
+      <a href="tel:+77017732456">+7 (701) 773-24-56</a>
+      <a href="mailto:Kaz.stom@bk.ru">Kaz.stom@bk.ru</a>
+    </div>
+  </div>
+</div>
+
+<main id="top" class="ev-page">
+
+  <section class="ev-hero">
+    <nav class="crumbs" aria-label="Навигация"><a href="index.html" class="link-u">Главная</a><span>/</span><span>Наши мероприятия</span></nav>
+    <div class="ev-hero__row">
+      <div class="label"><span>Наши мероприятия</span><b>Семинары · мастер-классы · курсы</b></div>
+      <div>
+        <h1 class="big ev-hero__title" data-fill-auto>Ближайшие мероприятия</h1>
+        <p class="ev-hero__sub" data-fade>Запишитесь прямо сейчас</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="market">
+    <button type="button" class="market__filters-btn" data-filters-toggle aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      Фильтры <b data-filters-count hidden></b>
+    </button>
+
+    <aside class="filters" data-filters>
+      <div class="filters__group">
+        <div class="filters__head"><h2>Календарь</h2></div>
+        <div class="cal" data-cal>
+          <div class="cal__top">
+            <button type="button" class="cal__nav" data-cal-prev aria-label="Предыдущий месяц">‹</button>
+            <span class="cal__month" data-cal-month></span>
+            <button type="button" class="cal__nav" data-cal-next aria-label="Следующий месяц">›</button>
+          </div>
+          <div class="cal__dow"><span>пн</span><span>вт</span><span>ср</span><span>чт</span><span>пт</span><span>сб</span><span>вс</span></div>
+          <div class="cal__grid" data-cal-grid></div>
+        </div>
+      </div>
+
+      <div class="filters__group">
+        <div class="filters__head"><h2>Город</h2></div>
+        <div class="filters__list" data-filter="city"></div>
+      </div>
+
+      <div class="filters__group">
+        <div class="filters__head"><h2>Направление</h2></div>
+        <div class="filters__list" data-filter="category"></div>
+      </div>
+
+      <div class="filters__group">
+        <div class="filters__head"><h2>Сертификат</h2></div>
+        <label class="fcheck"><input type="checkbox" data-filter-credits><span>С зачётными единицами</span></label>
+      </div>
+
+      <button type="button" class="filters__reset link-u" data-reset>Сбросить фильтры</button>
+    </aside>
+
+    <div class="market__main">
+      <div class="market__bar">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4" stroke-linecap="round"/></g></svg>
+          <input type="search" placeholder="Поиск по мероприятиям, лекторам" data-search aria-label="Поиск">
+        </label>
+        <span class="market__count" data-count-label></span>
+      </div>
+
+      <div class="grid" data-grid></div>
+
+      <div class="empty" data-empty hidden>
+        <h3>Ничего не нашлось</h3>
+        <p>Попробуйте изменить фильтры или сбросить их.</p>
+        <button type="button" class="pill pill--dark" data-reset><i class="pill__dot"></i><span>Сбросить фильтры</span></button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer__top">
+    <div class="footer__col">
+      <img src="assets/logo-footer.png" alt="KSA" class="footer__logo">
+      <p>Казахстанская стоматологическая ассоциация — член Всемирной федерации стоматологов FDI.</p>
+    </div>
+    <nav class="footer__col footer__nav">
+      <a href="index.html#benefits" class="link-u">Преимущества</a>
+      <a href="index.html#price" class="link-u">Стоимость</a>
+      <a href="index.html#steps" class="link-u">Как вступить</a>
+      <a href="events.html" class="link-u">Наши мероприятия</a>
+    </nav>
+    <div class="footer__col footer__nav">
+      <a href="tel:+77017732456" class="link-u">+7 (701) 773-24-56</a>
+      <a href="mailto:Kaz.stom@bk.ru" class="link-u">Kaz.stom@bk.ru</a>
+      <a href="https://www.instagram.com/ksa.kz" target="_blank" rel="noopener" class="link-u">Instagram</a>
+    </div>
+    <button type="button" class="arrow arrow--up" data-top aria-label="Наверх">↑</button>
+  </div>
+  <div class="footer__word" aria-hidden="true"><span>K</span><span>S</span><span>A</span></div>
+  <div class="footer__bottom">
+    <span>© 1991–2026 KSA</span>
+    <a href="#" class="link-u">Политика конфиденциальности</a>
+    <span>Астана · Алматы</span>
+  </div>
+</footer>
+
+<!-- ============ EVENT DETAIL ============ -->
+<div class="modal modal--event" data-modal="event" hidden>
+  <div class="modal__backdrop" data-close-ev></div>
+  <div class="modal__panel evd" role="dialog" aria-modal="true" aria-labelledby="evd-title">
+    <button type="button" class="modal__x" data-close-ev aria-label="Закрыть">×</button>
+    <div class="evd__grid" data-evd></div>
+  </div>
+</div>
+
+<!-- ============ APPLICATION POPUP ============ -->
+<div class="modal" data-modal="apply" hidden>
+  <div class="modal__backdrop" data-close></div>
+  <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="apply-title">
+    <button type="button" class="modal__x" data-close aria-label="Закрыть">×</button>
+    <form class="form" data-apply-form novalidate>
+      <div class="form__head">
+        <span class="form__cap">Заявка на членство · 10 000 ₸ / год</span>
+        <h2 id="apply-title" class="form__title">Вступить в КСА</h2>
+        <p class="form__event" data-form-event hidden></p>
+      </div>
+      <label class="field"><span>Имя и фамилия *</span><input name="name" autocomplete="name" required></label>
+      <label class="field"><span>Телефон *</span><input name="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__" required></label>
+      <div class="form__row">
+        <label class="field"><span>Город *</span>
+          <select name="city" required><option value="">Выберите</option><option>Астана</option><option>Алматы</option><option>Шымкент</option><option>Караганда</option><option>Актобе</option><option>Другой город</option></select>
+        </label>
+        <label class="field"><span>Специализация</span>
+          <select name="spec"><option value="">Выберите</option><option>Терапевт</option><option>Хирург</option><option>Ортопед</option><option>Ортодонт</option><option>Детский стоматолог</option><option>Пародонтолог</option><option>Имплантолог</option><option>Студент</option><option>Другое</option></select>
+        </label>
+      </div>
+      <label class="field"><span>Клиника / место работы</span><input name="clinic" autocomplete="organization"></label>
+      <input type="hidden" name="source">
+      <label class="check"><input type="checkbox" name="agree" required><span>Согласен(на) на обработку персональных данных</span></label>
+      <p class="form__err" data-form-err hidden>Заполните обязательные поля</p>
+      <button type="submit" class="pill pill--lime pill--xl form__submit"><i class="pill__dot"></i><span>Отправить заявку</span></button>
+    </form>
+    <div class="form__done" data-form-done hidden>
+      <div class="done__ico"><svg viewBox="0 0 32 32"><path d="M8 16.5l5.5 5.5L24 11" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2 class="form__title">Заявка отправлена</h2>
+      <p>Координатор КСА свяжется с вами в ближайшее время. Если WhatsApp не открылся автоматически — отправьте заявку кнопкой ниже.</p>
+      <a class="pill pill--dark" data-wa target="_blank" rel="noopener"><i class="pill__dot"></i><span>Отправить в WhatsApp</span></a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script src="https://unpkg.com/lenis@1.1.13/dist/lenis.min.js"></script>
+<script src="main.js?v=6"></script>
+<script src="events.js?v=6"></script>
+</body>
+</html>
