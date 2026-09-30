@@ -498,7 +498,13 @@ ol { list-style: none; }
 .perk__gift-top { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 .perk__brand { height: 1.4rem; width: auto; }
 .tag-pill { padding: .45rem .9rem; border-radius: 99px; background: var(--paper); color: var(--lime); font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
-.wave { display: flex; align-items: center; gap: .3rem; height: 3.4rem; margin-top: 1rem; }
+.perk--gift { cursor: pointer; transition: background .5s var(--ease); }
+.perk--gift:hover { background: #0088c4; }
+.perk--gift:focus-visible { outline: .25rem solid var(--ink); outline-offset: .3rem; }
+.perk__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-top: 1rem; }
+.perk__go { width: 3.4rem; height: 3.4rem; flex: none; border-radius: 50%; background: var(--paper); color: var(--lime); display: grid; place-items: center; font-size: 1.4rem; transition: transform .7s var(--ease); }
+.perk--gift:hover .perk__go { transform: rotate(45deg) scale(1.08); }
+.wave { display: flex; align-items: center; gap: .3rem; height: 3.4rem; flex: 1; }
 .wave i { flex: 1; max-width: .5rem; border-radius: 99px; background: rgba(253,254,255,.7); height: 20%; animation: wave 1.4s ease-in-out infinite; }
 .wave i:nth-child(3n) { animation-delay: -.3s; } .wave i:nth-child(3n+1) { animation-delay: -.7s; } .wave i:nth-child(4n) { animation-delay: -1.1s; }
 @keyframes wave { 0%, 100% { height: 18%; } 50% { height: 100%; } }
